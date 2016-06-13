@@ -3,7 +3,11 @@ package com.example.asus.myiotapp;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -29,8 +33,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import server.HsManager;
+import server.MyServer;
 
 import static android.Manifest.permission.READ_CONTACTS;
 
@@ -61,7 +69,9 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
-
+    private final static String hotspotSSID = "mCar";
+    private final static String hotspotPASS = "il0v3g00gl3";
+    private MyServer server;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -94,7 +104,62 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
 
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Settings.System.canWrite(this)) {
+                HsManager.configApState(this, true, hotspotSSID, hotspotPASS);
+                try {
+                    server = new MyServer();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Permission Essential")
+                        .setMessage(R.string.write_settings_dialog_message)
+                        .setPositiveButton("Open settings", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                askForWritePermission();
+                            }
+                        }). setNegativeButton("I refuse, exit the app!", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        ModemActivity.this.finish();
+                    }
+                }).setCancelable(false).create().show();
+            }
+        } else {
+            HsManager.configApState(this, true, hotspotSSID, hotspotPASS);
+            try {
+                server = new MyServer();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+    }
+    @Override
+    public void onPause() {
+        super.onPause();
+        if(server != null) {
+            server.stop();
+        }
+    }
+    private void askForWritePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if(!Settings.System.canWrite(this)) {
+                Intent goToSettings = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+                goToSettings.setData(Uri.parse("package:" + this.getPackageName()));
+                startActivity(goToSettings);
+            }
+        }
+    }
     private void populateAutoComplete() {
         if (!mayRequestContacts()) {
             return;
