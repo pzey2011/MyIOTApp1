@@ -1,6 +1,10 @@
 package server;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
+
+import com.example.asus.myiotapp.ModemActivity;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -12,10 +16,12 @@ import java.util.Enumeration;
  * Created by asus on 6/13/2016.
  */
 public class MyServer extends NanoHTTPD {
-
+    private Context context;
+    private SharedPreferences sharedPreferences;
     private final static int PORT = 8080;
-    public MyServer() throws IOException {
+    public MyServer(Context context) throws IOException {
         super(PORT);
+        this.context=context;
         start();
         System.out.println( "\nRunning! Point your browsers to http://" +
                 getWifiApIpAddress() + ":8080/ \n" );
@@ -23,9 +29,15 @@ public class MyServer extends NanoHTTPD {
 
     @Override
     public Response serve(IHTTPSession session) {
-        String msg = "<html><body><h1>Hello server</h1>\n";
-        msg += "<p>We serve " + session.getUri() + " !</p>";
-        return newFixedLengthResponse( msg + "</body></html>\n" );
+        sharedPreferences= context.getSharedPreferences(ModemActivity.MyPREFERENCES, Context.MODE_PRIVATE);
+        String  msg1=sharedPreferences.getString("SSID","ali");
+        msg1+=";";
+        msg1+=sharedPreferences.getString("Password","ali");
+        msg1+=";";
+
+        msg1+=sharedPreferences.getString("IP","ali");
+        msg1+=";";
+        return newFixedLengthResponse( msg1  );
     }
 
     public String getWifiApIpAddress() {

@@ -4,8 +4,10 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
@@ -32,6 +34,7 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -65,39 +68,41 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
     private UserLoginTask mAuthTask = null;
 
     // UI references.
-    private AutoCompleteTextView mEmailView;
+    private AutoCompleteTextView mSSIDView;
     private EditText mPasswordView;
+    private EditText mIPView;
+
     private View mProgressView;
     private View mLoginFormView;
     private final static String hotspotSSID = "mCar";
     private final static String hotspotPASS = "il0v3g00gl3";
     private MyServer server;
+    private SharedPreferences sharedPreferences;
+    public static final String MyPREFERENCES = "MyPrefs" ;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_modem);
         setupActionBar();
         // Set up the login form.
-        mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
-        populateAutoComplete();
+        mSSIDView = (AutoCompleteTextView) findViewById(R.id.ssid);
+
 
         mPasswordView = (EditText) findViewById(R.id.password);
-        mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        mIPView = (EditText) findViewById(R.id.ip);
+        sharedPreferences = getSharedPreferences(MyPREFERENCES, Context.MODE_PRIVATE);
+        Button mSendButton = (Button) findViewById(R.id.send_button);
+        mSendButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == R.id.login || id == EditorInfo.IME_NULL) {
-                    attemptLogin();
-                    return true;
-                }
-                return false;
-            }
-        });
+            public void onClick(View v) {
 
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
-        mEmailSignInButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                attemptLogin();
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+
+                editor.putString("SSID", mSSIDView.getText().toString());
+                editor.putString("Password", mPasswordView.getText().toString());
+                editor.putString("IP", mIPView.getText().toString());
+                editor.commit();
+                Toast.makeText(ModemActivity.this,"Thanks", Toast.LENGTH_LONG).show();
             }
         });
 
@@ -113,7 +118,7 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
             if (Settings.System.canWrite(this)) {
                 HsManager.configApState(this, true, hotspotSSID, hotspotPASS);
                 try {
-                    server = new MyServer();
+                    server = new MyServer(ModemActivity.this);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -136,7 +141,7 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
         } else {
             HsManager.configApState(this, true, hotspotSSID, hotspotPASS);
             try {
-                server = new MyServer();
+                server = new MyServer(ModemActivity.this);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -176,7 +181,7 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
             return true;
         }
         if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
-            Snackbar.make(mEmailView, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
+            Snackbar.make(mSSIDView, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
                     .setAction(android.R.string.ok, new View.OnClickListener() {
                         @Override
                         @TargetApi(Build.VERSION_CODES.M)
@@ -225,11 +230,11 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
         }
 
         // Reset errors.
-        mEmailView.setError(null);
+        mSSIDView.setError(null);
         mPasswordView.setError(null);
 
         // Store values at the time of the login attempt.
-        String email = mEmailView.getText().toString();
+        String email = mSSIDView.getText().toString();
         String password = mPasswordView.getText().toString();
 
         boolean cancel = false;
@@ -244,12 +249,12 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
 
         // Check for a valid email address.
         if (TextUtils.isEmpty(email)) {
-            mEmailView.setError(getString(R.string.error_field_required));
-            focusView = mEmailView;
+            mSSIDView.setError(getString(R.string.error_field_required));
+            focusView = mSSIDView;
             cancel = true;
         } else if (!isEmailValid(email)) {
-            mEmailView.setError(getString(R.string.error_invalid_email));
-            focusView = mEmailView;
+            mSSIDView.setError(getString(R.string.error_invalid_email));
+            focusView = mSSIDView;
             cancel = true;
         }
 
@@ -352,7 +357,7 @@ public class ModemActivity extends AppCompatActivity implements LoaderCallbacks<
                 new ArrayAdapter<>(ModemActivity.this,
                         android.R.layout.simple_dropdown_item_1line, emailAddressCollection);
 
-        mEmailView.setAdapter(adapter);
+        mSSIDView.setAdapter(adapter);
     }
 
 
